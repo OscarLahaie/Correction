@@ -9,6 +9,7 @@ set chan [open $results w]
 set timeout 1
 
 set nbok 0
+set nbtotal 0
 
 spawn env OCAML_COLOR=never OCAML_ERROR_STYLE=short ocaml
 
@@ -61,6 +62,7 @@ log_user 1
 
 proc booltest {name text} {
   global nbok
+  global nbtotal
   set h "let test_$name () =\n"
   set data "$h$text\n;;\n" 
   expect_prompt
@@ -74,8 +76,8 @@ proc booltest {name text} {
   expect_prompt
   send "test_$name ();;\n"
   expect {
-    "true" {log "vrai:$name"; incr nbok}
-    "false" {log "FAUX:$name"}
+    "true" {log "vrai:$name"; incr nbok; incr nbtotal}
+    "false" {log "FAUX:$name"; incr nbtotal}
     "Stack overflow during evaluation (looping recursion?)." {log "FAUX:$name (Boucle infinie ?)"}
     "Exception:" {log "FAUX:$name (exception déclenchée)"}
       timeout {log "FAUX:$name (trop long)"; interrupt_caml}
@@ -84,51 +86,221 @@ proc booltest {name text} {
 
 set tests {
 
-    question_1_test_a {let a = [|0; 1; 2|] in echange a 1 2; a = [|0; 2; 1|]}
-    question_2_test_a {let a = [||] in tri_insertion a; a = [||]}
-    question_2_test_b {let a = [|2; 0; 1|] in tri_insertion a; a = [|0; 1; 2|]}
-    question_2_test_c {let a = [|2; 0; 1; -1; 10; 15; 0; 0|] in tri_insertion a; a = [|-1; 0; 0; 0; 1; 2; 10; 15|]}
-    question_3_test_a {let a = [|1; 0|] in let x = partition a 0 1 in (x = 1) && (a = [|0; 1|])}
-    question_3_test_b {let a = [|2; 0; 0; 3; 3|] in let x = partition a 0 4 in (x = 2) && (a = [|0; 0; 2; 3; 3|])}
-    question_3_test_c {let a = [|2; 0; 3; 0; 3|] in let x = partition a 2 3 in (x = 3) && (a = [|2; 0; 0; 3; 3|])}
-    question_4_test_a {let a = [|1; 0|] in tri_rapide_aux a 0 1; a = [|0; 1|]}
-    question_4_test_b {let a = [|0; 1; 3; 2; 0|] in tri_rapide_aux a 2 3; a = [|0; 1; 2; 3; 0|]}
-    question_4_test_c {let a = [|0; 1; 3; 2; 0|] in tri_rapide_aux a 2 4; a = [|0; 1; 0; 2; 3|]}
-    question_5_test_a {let a = [||] in tri_rapide a; a = [||]}
-    question_5_test_b {let a = [|3; 2; 1; 0|] in tri_rapide a; a = [|0; 1; 2; 3|]}
-    question_5_test_c {let a = [|"b"; "a"; "c"; "c"|] in tri_rapide a; a = [|"a"; "b"; "c"; "c"|]}
-    question_6_test_a {not (est_permutation [|0; 4; 2; 1; 3; 4|])}
-    question_6_test_b {not (est_permutation [|0; 4; 2; 1; 6; 3|])}
-    question_6_test_c {est_permutation (Array.init 1000000 (fun i -> i))}
-    question_7_test_a {support [|0|] = []}
-    question_7_test_b {List.sort compare (support [|0; 3; 2; 1; 4|]) =
-        [1; 3]
+    question_1_test_a {
+        let a = ['a'] in
+        let b = ['a';'b';'c'] in
+        precede a b = true
+    }
+    question_1_test_b {
+        let a = ['z'] in
+        let b = ['m'] in
+        precede a b = false
+    }
+    question_1_test_c {
+        let a = ['c';'d'] in 
+        let b = ['b';'d'] in
+        precede a b = false
+    }
+    question_1_test_d {
+        let a = ['c';'d';'e'] in
+        let b = ['c';'d';'f'] in
+        precede a b = true
+    }
+    question_2_test_a {
+        let mot = ['d';'e'] in
+        let mots = [['f'; 'a'; 'i'; 'r'; 'e']; ['o'];['b'; 'r'; 'o'; 'u'; 'i'; 'l'; 'l'; 'e']] in 
+        prefixer mot mots = [['d'; 'e'; 'f'; 'a'; 'i'; 'r'; 'e']; ['d'; 'e'; 'o'];['d'; 'e'; 'b'; 'r'; 'o'; 'u'; 'i'; 'l'; 'l'; 'e']]
+    }
+    question_2_test_b {
+        let mot = ['i';'m'] in 
+        let mots = [['p'; 'e'; 'r'; 'm'; 'e'; 'a'; 'b'; 'l'; 'e'];['p'; 'o'; 's'; 's'; 'i'; 'b'; 'l'; 'e']; ['u'; 'a'; 'b'; 'l'; 'e']] in
+        prefixer mot mots = [['i'; 'm'; 'p'; 'e'; 'r'; 'm'; 'e'; 'a'; 'b'; 'l'; 'e'];
+        ['i'; 'm'; 'p'; 'o'; 's'; 's'; 'i'; 'b'; 'l'; 'e'];
+        ['i'; 'm'; 'u'; 'a'; 'b'; 'l'; 'e']]
+    }
+    question_6_creer {
+        let mot = ['X'; ' '; 'o'; 'u'; ' '; 'r'; 'i'; 'e'; 'n'; ' '; '!'] in
+        creer mot = Noeud (false, [(['X'; ' '; 'o'; 'u'; ' '; 'r'; 'i'; 'e'; 'n'; ' '; '!'], Noeud (true, []))])
+    }
+    question_6_ex_5 {
+        let f arbre = 
+        match arbre with
+        | Noeud (term1, [((m : mot), Noeud(term2, []))]) ->
+        term1 = false && term2 = true
+        | _ -> false
+        in f ex_5
+    }
+    question_7_test_a {
+        compter ex_0 = 0
+    }
+    question_7_test_b {
+        compter ex_1 = 1
     }
     question_7_test_c {
-        let a = Array.init 1000000 (fun i -> i) in
-        a.(999998) <- 999999;
-        a.(999999) <- 999998;
-        not (List.sort compare (support a) = [9999998; 9999999])
+        compter ex_4 = 6
+    }
+    question_8_test_a {
+        extraire ex_4 = [['a'; 's']; ['f'; 'a']; ['f'; 'a'; 'b'; 'l'; 'e']; ['f'; 'a'; 'c'; 'e'];
+        ['f'; 'a'; 'c'; 'i'; 'l'; 'e']; ['l'; 'a']]
     }
     question_8_test_b {
-        compose [|1; 2; 0; 4; 3|] [|0; 3; 2; 1; 4|] = 
-        [|1; 4; 0; 2; 3|]
+        extraire (Noeud (false, [(['X'; ' '; 'o'; 'u'; ' '; 'r'; 'i'; 'e'; 'n'; ' '; '!'], Noeud (true, []))])) = [['X'; ' '; 'o'; 'u'; ' '; 'r'; 'i'; 'e'; 'n'; ' '; '!']]
     }
-    question_8_test_c {
-        let a = Array.init 1000000 (fun i -> i) in
-        compose a a = a
+    question_9_a {
+        valide ex_0 = true
     }
-    question_9_test_a {
-        inverse [|2; 1; 0|] = [|2; 1; 0|]
+    question_9_b {
+        valide ex_1 = true
     }
-    question_9_test_b {
-        inverse [|2; 3; 1; 4; 0|] = [|4; 2; 0; 1; 3|]
+    question_9_c {
+        valide ex_4 = true
     }
-    question_9_test_c {
-        let a = Array.init 1000000 (fun i -> i) in
-        inverse a = a
+    question_9_d {
+        valide ( Noeud (false,
+            [
+                (['f'; 'a'],
+                 Noeud (true,
+                  [(['b'; 'l'; 'e'], Noeud (true, []));
+                   (['c'],
+                    Noeud (false,
+                     [(['e'], Noeud (true, [])); (['i'; 'l'; 'e'], Noeud (true, []));
+                      (['t'; 'e'; 'u'; 'r'], Noeud (true, []))]))]));
+                (['a'; 's'], Noeud (true, []));
+             (['l'; 'a'], Noeud (true, []))])) = false
     }
-
+    question_9_e {
+        valide (
+            Noeud (false, [(['b'], ex_1); (['a'], ex_1)])
+        ) = false
+    }
+    question_10_a {
+        accepter ['l'; 'a'] ex_4 = true
+    }
+    question_10_b {
+        accepter ['a'; 's'] ex_4 = true
+    }
+    question_10_c {
+        accepter ['f'; 'a'; 'b'; 'l'; 'e'] ex_4 = true
+    }
+    question_10_d {
+        accepter ['f'; 'a'; 'b'; 'l'] ex_4 = false
+    }
+    question_10_e {
+        accepter ['f'; 'a'; 'c'] ex_4 = false
+    }
+    question_12_test_a {
+        ajouter ['f'; 'a'; 'c'; 't'; 'e'; 'u'; 'r'] ex_4 = Noeud (false,
+            [(['a'; 's'], Noeud (true, []));
+             (['f'; 'a'],
+              Noeud (true,
+               [(['b'; 'l'; 'e'], Noeud (true, []));
+                (['c'],
+                 Noeud (false,
+                  [(['e'], Noeud (true, [])); (['i'; 'l'; 'e'], Noeud (true, []));
+                   (['t'; 'e'; 'u'; 'r'], Noeud (true, []))]))]));
+             (['l'; 'a'], Noeud (true, []))])
+    }
+    question_12_test_b {
+        ajouter ['l'; 'a'; 'm'; 'p'; 'e'] ex_4 = Noeud (false,
+            [(['a'; 's'], Noeud (true, []));
+             (['f'; 'a'],
+              Noeud (true,
+               [(['b'; 'l'; 'e'], Noeud (true, []));
+                (['c'],
+                 Noeud (false,
+                  [(['e'], Noeud (true, [])); (['i'; 'l'; 'e'], Noeud (true, []))]))]));
+             (['l'; 'a'], Noeud (true, [(['m'; 'p'; 'e'], Noeud (true, []))]))])
+    }
+    question_12_test_c {
+        ajouter ['l'; 'a'; 'm'; 'e'] ex_4 = 
+        Noeud (false,
+            [(['a'; 's'], Noeud (true, []));
+             (['f'; 'a'],
+              Noeud (true,
+               [(['b'; 'l'; 'e'], Noeud (true, []));
+                (['c'],
+                 Noeud (false,
+                  [(['e'], Noeud (true, [])); (['i'; 'l'; 'e'], Noeud (true, []))]))]));
+             (['l'; 'a'], Noeud (true, [(['m'; 'e'], Noeud (true, []))]))])
+    }
+    question_12_test_final {
+        ex_4
+        |> ajouter ['l'; 'a'; 'm'; 'e'] 
+        |> ajouter ['l'; 'a'; 'm'; 'p'; 'e'] 
+        |> ajouter ['f'; 'a'; 'c'; 't'; 'e'; 'u'; 'r']
+        = Noeud (false,
+            [(['a'; 's'], Noeud (true, []));
+             (['f'; 'a'],
+              Noeud (true,
+               [(['b'; 'l'; 'e'], Noeud (true, []));
+                (['c'],
+                 Noeud (false,
+                  [(['e'], Noeud (true, [])); (['i'; 'l'; 'e'], Noeud (true, []));
+                   (['t'; 'e'; 'u'; 'r'], Noeud (true, []))]))]));
+             (['l'; 'a'],
+              Noeud (true,
+               [(['m'],
+                 Noeud (false,
+                  [(['e'], Noeud (true, [])); (['p'; 'e'], Noeud (true, []))]))]))])
+    }
+    question_13_a {
+        fusion ex_4 (Noeud (false,
+            [(['a'; 's'], Noeud (true, []));
+             (['f'; 'a'],
+              Noeud (true,
+               [(['b'; 'l'; 'e'], Noeud (true, []));
+                (['c'],
+                 Noeud (false,
+                  [(['e'], Noeud (true, [])); (['i'; 'l'; 'e'], Noeud (true, []));
+                   (['t'; 'e'; 'u'; 'r'], Noeud (true, []))]))]));
+             (['l'; 'a'],
+              Noeud (true,
+               [(['m'],
+                 Noeud (false,
+                  [(['e'], Noeud (true, [])); (['p'; 'e'], Noeud (true, []))]))]))])) = 
+                  (Noeud (false,
+                    [(['a'; 's'], Noeud (true, []));
+                     (['f'; 'a'],
+                      Noeud (true,
+                       [(['b'; 'l'; 'e'], Noeud (true, []));
+                        (['c'],
+                         Noeud (false,
+                          [(['e'], Noeud (true, [])); (['i'; 'l'; 'e'], Noeud (true, []));
+                           (['t'; 'e'; 'u'; 'r'], Noeud (true, []))]))]));
+                     (['l'; 'a'],
+                      Noeud (true,
+                       [(['m'],
+                         Noeud (false,
+                          [(['e'], Noeud (true, [])); (['p'; 'e'], Noeud (true, []))]))]))]))
+    }
+    question_13_b {
+        let arbre = Noeud (false , [(['p'; 'r'; 'e'; 'p'; 'a'], ex_1)]) in
+        fusion arbre ex_4 = Noeud (false,
+            [(['a'; 's'], Noeud (true, []));
+             (['f'; 'a'],
+              Noeud (true,
+               [(['b'; 'l'; 'e'], Noeud (true, []));
+                (['c'],
+                 Noeud (false,
+                  [(['e'], Noeud (true, [])); (['i'; 'l'; 'e'], Noeud (true, []))]))]));
+             (['l'; 'a'], Noeud (true, []));
+             (['p'; 'r'; 'e'; 'p'; 'a'], Noeud (true, []))])
+    }
+    question_13_c {
+        let arbre = Noeud (false, [(['a'; 'b'], Noeud (true, [(['c'; 'd'], Noeud (true, []))]))]) in
+        fusion ex_4 arbre = Noeud (false,
+            [(['a'],
+              Noeud (false,
+               [(['b'], Noeud (true, [(['c'; 'd'], Noeud (true, []))]));
+                (['s'], Noeud (true, []))]));
+             (['f'; 'a'],
+              Noeud (true,
+               [(['b'; 'l'; 'e'], Noeud (true, []));
+                (['c'],
+                 Noeud (false,
+                  [(['e'], Noeud (true, [])); (['i'; 'l'; 'e'], Noeud (true, []))]))]));
+             (['l'; 'a'], Noeud (true, []))])
+    }
 }
 
 send {
@@ -139,8 +311,5 @@ expect_prompt
 
 foreach {name text} $tests {booltest $name $text}
 
-log "SUCCES:$nbok/24"
-set note [expr {14. * $nbok / 24.}]
-set notef [format "%.2f" $note]
-log "NOTE:$notef/14.00"
+log "SUCCES:$nbok/$nbtotal"
 close $chan
