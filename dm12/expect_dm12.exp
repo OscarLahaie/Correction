@@ -90,22 +90,22 @@ set tests {
     question_1_test_a {
         let a = ['a'] in
         let b = ['a';'b';'c'] in
-        precede a b = true
+        precede a b = false
     }
     question_1_test_b {
-        let a = ['z'] in
-        let b = ['m'] in
-        precede a b = false
+        let a = ['m'] in
+        let b = ['z'] in
+        precede a b = true
     }
     question_1_test_c {
-        let a = ['c';'d'] in 
-        let b = ['b';'d'] in
-        precede a b = false
+        let a = ['b';'d'] in 
+        let b = ['c';'d'] in
+        precede a b = true
     }
     question_1_test_d {
         let a = ['c';'d';'e'] in
         let b = ['c';'d';'f'] in
-        precede a b = true
+        precede a b = false
     }
     question_2_test_a {
         let mot = ['d';'e'] in
