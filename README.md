@@ -60,3 +60,8 @@ question_1_test_a
     precede a b = true
 }
 ```
+Ici on voit que le texte represente le nom du test qui sera afficher à l'utilisateur et entre les accolades le code Ocaml qui va être éxécuté.
+On voit bien que la variable a precede la variable b donc on s'attend à ce que le résultat soit `true`.
+
+## Contact
+Si vous avez des questions n'hésité pas à me contacter par Discord
