@@ -67,6 +67,7 @@ proc booltest {name text} {
   set data "$h$text\n;;\n" 
   expect_prompt
   send $data
+  incr nbtotal
   expect {
     "test_$name : unit -> bool = <fun>" {}
     -re "Error: This expression has type" {log "ERREUR:$name (erreur de type)"; return -1}
@@ -76,8 +77,8 @@ proc booltest {name text} {
   expect_prompt
   send "test_$name ();;\n"
   expect {
-    "true" {log "vrai:$name"; incr nbok; incr nbtotal}
-    "false" {log "FAUX:$name"; incr nbtotal}
+    "true" {log "vrai:$name"; incr nbok}
+    "false" {log "FAUX:$name"}
     "Stack overflow during evaluation (looping recursion?)." {log "FAUX:$name (Boucle infinie ?)"}
     "Exception:" {log "FAUX:$name (exception déclenchée)"}
       timeout {log "FAUX:$name (trop long)"; interrupt_caml}
