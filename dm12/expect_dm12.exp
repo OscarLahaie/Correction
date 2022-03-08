@@ -314,3 +314,4 @@ foreach {name text} $tests {booltest $name $text}
 
 log "SUCCES:$nbok/$nbtotal"
 close $chan
+
