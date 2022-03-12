@@ -1,0 +1,205 @@
+#! /usr/bin/env expect
+set file $argv
+set fd [open $file r]
+#set dir [file dirname $file]
+#set results [file join $dir resultat.log]
+set results "$file.res"
+set chan [open $results w]
+
+set timeout 1
+
+set nbok 0
+
+spawn ocaml
+
+proc log {text} {
+  global chan
+  #puts stderr $text
+  puts $chan $text
+}
+
+proc interrupt_caml {} {
+  exec kill -SIGINT [exp_pid]
+  expect "Interrupted."
+}
+
+proc expect_prompt {} {
+  expect {
+    {#} {}
+    timeout {interrupt_caml; exp_continue}
+  }
+}
+
+proc start {} {
+  global fd
+  expect {#}
+
+  send [read $fd]
+
+  send {let _ = print_string "READY?";;}
+  send "\n"
+  send {let msg1 = "TESTS BEGIN";;}
+  send "\n"
+  send {let msg2 = " HERE";;}
+  send "\n"
+  send "let _ = print_string (msg1 ^ msg2);;\n"
+
+  expect {
+     "TESTS BEGIN HERE" {}
+     timeout {log "--- ERREUR GÉNÉRALE ---"; interrupt_caml}
+  }
+}
+
+log_user 0
+start
+log_user 1
+
+# booltest name "blabla" envoie "blabla" à caml
+# écrit sur stderr oui:name si caml répond "true",
+# non:name si caml répond false
+# ERROR:name si caml a une autre réaction
+
+proc booltest {name text} {
+  global nbok
+  set h "let test_$name () =\n"
+  set data "$h$text\n;;\n" 
+  expect_prompt
+  send $data
+  expect {
+    "test_$name : unit -> bool = <fun>" {}
+    -re "Error: This expression has type" {log "ERREUR:$name (erreur de type)"; return -1}
+    -re "Error: Unbound value.*" {log "ERREUR:$name (fonction non définie)"; return -1}
+    timeout {log "ERREUR:$name (test ne compile pas)"; interrupt_caml; return -1}
+  }
+  expect_prompt
+  send "test_$name ();;\n"
+  expect {
+    "true" {log "vrai:$name"; incr nbok}
+    "false" {log "FAUX:$name"}
+    "Stack overflow during evaluation (looping recursion?)." {log "FAUX:$name (Boucle infinie ?)"}
+    "Exception:" {log "FAUX:$name (exception déclenchée)"}
+      timeout {log "FAUX:$name (trop long)"; interrupt_caml}
+  }
+}
+
+set tests {
+    question_01 {precede ['a'; 'b'] ['b'; 'a']}
+    question_02 {prefixer ['a'] [['a'; 'b']; ['b'; 'a']] = 
+        [['a'; 'a'; 'b']; ['a'; 'b'; 'a']]}
+    question_03 {complexite_prefixer >= 0}
+    question_06 {creer ['a'; 'b'] = Noeud (false, [(['a'; 'b'], Noeud (true, []))])}
+    question_07 {compter (Noeud (true, [(['a'; 'b'], Noeud (true, []))])) = 2}
+    question_08 {extraire (Noeud (false, [(['a'; 'b'], Noeud (true, []))])) = [['a'; 'b']]}
+    question_09 {valide ex_4}
+    question_10 {accepter ['f'; 'a'; 'c'; 'e'] ex_4}
+    question_11 {taille_ex_4_avec_ajout <> (-1, -1)}
+    question_12 {ajouter ['l'; 'a'; 'm'; 'e'] (Noeud (false, [])) =
+        Noeud (false, [['l'; 'a'; 'm'; 'e'], Noeud (true, [])])
+           }
+    question_13 {fusion ex_4 ex_4 = ex_4}
+}
+
+send {
+
+let rangi n c = 
+  let rec aux acc = function i ->
+    if i = 0 then acc else aux ((i, c) :: acc) (i - 1)
+  in aux [] n
+
+let fhgrnmlks54398 i k = i * k * 23674 mod 97
+
+let rec tururu4321 i k acc = 
+  if i = 0 then
+    acc else
+    tururu4321 (i - 1) (k + 1) (fhgrnmlks54398 i k :: acc)
+
+let lili987654321 = tururu4321 10000 1 []
+
+let rec tarara1234 i acc =
+  if i = 0 then acc
+  else 
+    let l = List.map char_of_int (tururu4321 (1 + i * 4333 mod 101) i [])
+    in let ll = if not (List.mem l acc) then [l] else []
+    in tarara1234 (i - 1) (ll @ acc)
+
+let momot2727 = tarara1234 1000 []
+
+let rec accepter_34_23321_44 m (Noeud (term, fils)) =
+  if m = [] then
+    term
+  else
+    accepter_34_23321_44_foret m fils
+and accepter_34_23321_44_foret m fils =
+let rec plus_grand_prefixe_commun u v =
+match u, v with
+  | tu :: su, tv :: sv when tu = tv ->
+      let (p, u', v') =  plus_grand_prefixe_commun su sv in
+      (tu :: p, u', v')
+  | _ -> ([], u, v)
+in
+  match fils with
+  | [] -> false
+  | (p, aine) :: freres ->
+      if precede p m then
+        accepter_34_23321_44_foret m freres
+      else if precede m p then
+        false
+      else
+        match plus_grand_prefixe_commun p m with
+        | _, [], v -> accepter_34_23321_44 v aine
+        | _ -> false
+
+let rec ajouter_96_45_34 m (Noeud (term, fils)) =
+  if m = [] then
+    Noeud (true, fils)
+  else
+    Noeud (term, ajouter_96_45_34_foret m fils)
+and ajouter_96_45_34_foret m fils =
+let rec plus_grand_prefixe_commun u v =
+match u, v with
+  | tu :: su, tv :: sv when tu = tv ->
+      let (p, u', v') =  plus_grand_prefixe_commun su sv in
+      (tu :: p, u', v')
+  | _ -> ([], u, v)
+in
+  match fils with
+  | [] -> [(m, Noeud (true, []))]
+  | (p, aine) :: freres ->
+      if precede p m then
+        (p, aine) :: (ajouter_96_45_34_foret m freres)
+      else if precede m p then
+        (m, Noeud (true, [])) :: fils
+      else
+        match plus_grand_prefixe_commun p m with
+        | _, [], v ->
+          (p, ajouter_96_45_34 v aine) :: freres
+        | _, u, [] -> 
+          (m, Noeud (true, [(u, aine)])) :: freres
+        | w, u, v ->
+          (w, Noeud (false, (ajouter_96_45_34_foret v [(u, aine)]))) :: freres
+
+let rec ajouter_96_45_34_liste_9876 = function
+  | [] -> creer []
+  | m :: [] -> creer m
+  | m :: suite -> ajouter_96_45_34 m (ajouter_96_45_34_liste_9876 suite)
+
+let rec accepter_96_45_34_liste_9876 d = function
+  | [] -> true
+  | m :: suite -> accepter_34_23321_44 m d && (accepter_96_45_34_liste_9876 d suite)
+
+let rec division liste =
+  match liste with
+  | [] -> [], []
+  | tete :: [] -> liste, []
+  | tete1 :: tete2 :: queue -> 
+     let liste1, liste2 = division queue in
+     tete1 :: liste1, tete2 :: liste2
+
+let bigbig272 = ajouter_96_45_34_liste_9876 momot2727;;
+
+}
+
+foreach {name text} $tests {booltest $name $text}
+
+log "SUCCES:$nbok/11"
+close $chan
