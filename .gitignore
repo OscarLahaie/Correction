@@ -1,4 +1,3 @@
-
-*.ml
 *.res
 *.log
+dm12/dm12.ml
