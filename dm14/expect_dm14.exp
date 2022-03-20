@@ -1,0 +1,264 @@
+#!/usr/bin/env expect
+set file $argv
+set fd [open $file r]
+#set dir [file dirname $file]
+#set results [file join $dir resultat.log]
+set results "$file.res"
+set chan [open $results w]
+
+set timeout 1
+
+set nbok 0
+set nbtotal 0
+
+spawn env OCAML_COLOR=never OCAML_ERROR_STYLE=short ocaml
+
+proc log {text} {
+  global chan
+  #puts stderr $text
+  puts $chan $text
+}
+
+proc interrupt_caml {} {
+  exec kill -SIGINT [exp_pid]
+  expect "Interrupted."
+}
+
+proc expect_prompt {} {
+  expect {
+    {#} {}
+    timeout {interrupt_caml; exp_continue}
+  }
+}
+
+proc start {} {
+  global fd
+  expect {#}
+
+  send [read $fd]
+
+  send {let _ = print_string "READY?";;}
+  send "\n"
+  send {let msg1 = "TESTS BEGIN";;}
+  send "\n"
+  send {let msg2 = " HERE";;}
+  send "\n"
+  send "let _ = print_string (msg1 ^ msg2);;\n"
+
+  expect {
+     "TESTS BEGIN HERE" {}
+     timeout {log "--- ERREUR GÉNÉRALE ---"; interrupt_caml}
+  }
+}
+
+log_user 0
+start
+log_user 1
+
+# booltest name "blabla" envoie "blabla" à caml
+# écrit sur stderr oui:name si caml répond "true",
+# non:name si caml répond false
+# ERROR:name si caml a une autre réaction
+
+proc booltest {name text} {
+  global nbok
+  global nbtotal
+  set h "let test_$name () =\n"
+  set data "$h$text\n;;\n" 
+  expect_prompt
+  send $data
+  incr nbtotal
+  expect {
+    "test_$name : unit -> bool = <fun>" {}
+    -re "Error: This expression has type" {log "ERREUR:$name (erreur de type)"; return -1}
+    -re "Error: Unbound value" {log "ERREUR:$name (fonction non définie)"; return -1}
+    timeout {log "ERREUR:$name (test ne compile pas)"; interrupt_caml; return -1}
+  }
+  expect_prompt
+  send "test_$name ();;\n"
+  expect {
+    "true" {log "vrai:$name"; incr nbok}
+    "false" {log "FAUX:$name"}
+    "Stack overflow during evaluation (looping recursion?)." {log "FAUX:$name (Boucle infinie ?)"}
+    "Exception:" {log "FAUX:$name (exception déclenchée)"}
+      timeout {log "FAUX:$name (trop long)"; interrupt_caml}
+  }
+}
+
+set tests {
+    question_1_a {
+        distance (1.,1.) (0.,1.) = 1.
+    }
+    question_1_b {
+        distance (1.,2.) (1.,0.) = 2.
+    }
+    question_1_c {
+        distance (0.,0.) (1.,1.) = sqrt (2.)
+    }
+    question_2_a {
+      let coucou = points_random 10 in lamegafonctionducours coucou = plus_proche_naif coucou
+    }
+    question_2_b {
+      let coucou = points_random 10 in lamegafonctionducours coucou = plus_proche_naif coucou
+    }
+    question_2_c {
+      let coucou = points_random 100 in lamegafonctionducours coucou = plus_proche_naif coucou
+    }
+    question_2_d {
+      let coucou = points_random 100 in lamegafonctionducours coucou = plus_proche_naif coucou
+    }
+    question_2_e {
+      let coucou = points_random 1000 in lamegafonctionducours coucou = plus_proche_naif coucou
+    }
+    question_2_f {
+      let coucou = points_random 1000 in lamegafonctionducours coucou = plus_proche_naif coucou
+    }
+    question_3 {
+      complexite_methode_naive > -1
+    }
+    question_4_a {
+      let coucou = points_random 10 in tri_ordonnees coucou = jaimepaslereglisse coucou
+    }
+    question_4_b {
+      let coucou = points_random 100 in tri_ordonnees coucou = jaimepaslereglisse coucou
+    }
+    question_4_c {
+      let coucou = points_random 500 in tri_ordonnees coucou = jaimepaslereglisse coucou
+    }
+    question_4_d {
+      let coucou = points_random 1000 in tri_ordonnees coucou = jaimepaslereglisse coucou
+    }
+    question_5_a {
+      let coucou = [|(-96.7125937126934, -52.4058707213460409);
+        (-92.0036725664819812, 19.3978252184791273);
+        (-1.7046601753236672, 74.8525447600924565);
+        (18.930670426772366, -61.3769817059534404);
+        (-79.865384073541, 3.70661526211628711);
+        (93.1855560262572737, -74.6750137036407864);
+        (48.8150674872601655, 50.2712214198235756);
+        (62.6906457755459883, -57.725979193484882);
+        (0.780860040308951397, -31.7609403073949466);
+        (-65.3031890325602689, -27.2598914348985062)|] in
+        selectionne_points_dans_T coucou 0. 50. = [|(-1.7046601753236672, 74.8525447600924565);
+          (18.930670426772366, -61.3769817059534404);
+          (48.8150674872601655, 50.2712214198235756);
+          (0.780860040308951397, -31.7609403073949466)|]
+    } question_5_b {
+      let coucou = [|(20., 11.6332112778765975);
+        (-73.0290418331415481, -38.0479636958102816);
+        (91.2038541776573197, -7.30627001867851789);
+        (-31.3683092848990839, -92.7702831294490267);
+        (21.0265912849893084, -29.1750943704409451);
+        (-38.1956761173312813, -96.1218275603750243);
+        (66.7499438479226797, 31.6359354334678358);
+        (-55.0841904534158076, 44.9790324025821349);
+        (-68.1244944382604, 85.7158768946874545);
+        (30.4855518572651363, -44.6783385530262);
+        (-83.4634011777222611, 76.2216942295749504);
+        (89.8519390656782662, 69.7788388038010226);
+        (41.6625201058448056, -99.3745430472328906);
+        (12.7625634955779645, 38.344213631443921);
+        (55.4785265469207616, -39.5631940632414612);
+        (6.16877793510144556, -13.9037759910048351);
+        (-20., -76.6678176090031798);
+        (45.7446716717604716, -70.4972190199872699);
+        (-97.0952580333098894, -38.9643165776072067);
+        (5.57561279428775, 99.1817006595963733)|] in selectionne_points_dans_T coucou 0. 20. = [|(20., 11.6332112778765975); (12.7625634955779645, 38.344213631443921);
+          (6.16877793510144556, -13.9037759910048351); (-20., -76.6678176090031798);
+          (5.57561279428775, 99.1817006595963733)|]
+    }
+    question_5_c {
+      let coucou = [|(-92.4585210118571297, -89.1239982383505378);
+        (-35.726673127165, 98.6726138289683377);
+        (31.6460806759848765, -29.9071161636948517);
+        (36.0706721642301, 86.1611999917807);
+        (92.9718220555637, -6.03786668240829272);
+        (63.1241598777254467, -95.514748168607241);
+        (14.8513708332098, -85.099220212168774);
+        (60.589204053019472, 12.7998264296524553);
+        (53.1495011344432555, 89.3583230098737147);
+        (10.9149153951341873, -85.6453971521500108);
+        (-2.20435864892388622, -73.3494998819241744);
+        (88.3980376686497493, 5.63261229532696461);
+        (61.0814286682899876, -84.9888119733700762);
+        (-62.2110694155923625, -74.7834170993173473);
+        (29.0225300215118125, -88.2627162842296258);
+        (-21.9826085261418172, 5.58339144240360952);
+        (-18.1505461365025695, -19.7296643075987532);
+        (-77.3429756546527329, -12.2964674602115593);
+        (-17.5917952407454408, 18.0986863752944771);
+        (-19.4711901698986054, 69.9332338852042881);
+        (-3.71536381921470138, -61.8333352451101206);
+        (63.9797575756703907, 27.3085630852882);
+        (56.118474790986653, -84.8199708377052133);
+        (-33.2538455827792205, 90.0395962595362107);
+        (-99.6150005798366891, -91.6501280787206838);
+        (32.7332131667575368, -48.6577106701804851);
+        (-71.0559337926193706, 21.5830500546003492);
+        (-44.3112498910001, -95.7665583163967256);
+        (-50.5111569303021142, 98.3256433623879502);
+        (-39.4531871732350936, -76.7593372306861426)|] in 
+        selectionne_points_dans_T coucou 20. 30. =
+        [|(31.6460806759848765, -29.9071161636948517);
+          (36.0706721642301, 86.1611999917807);
+          (14.8513708332098, -85.099220212168774);
+          (10.9149153951341873, -85.6453971521500108);
+          (-2.20435864892388622, -73.3494998819241744);
+          (29.0225300215118125, -88.2627162842296258);
+          (-3.71536381921470138, -61.8333352451101206);
+          (32.7332131667575368, -48.6577106701804851)|]
+    }
+    question_6_a {
+      let coucou = points_random 10 in lamegafonctionducours coucou = plus_proches_diviser coucou
+    }
+    question_6_b {
+      let coucou = points_random 10 in lamegafonctionducours coucou = plus_proches_diviser coucou
+    }
+    question_6_c {
+      let coucou = points_random 100 in lamegafonctionducours coucou = plus_proches_diviser coucou
+    }
+    question_6_d {
+      let coucou = points_random 100 in lamegafonctionducours coucou = plus_proches_diviser coucou
+    }
+    question_6_e {
+      let coucou = points_random 1000 in lamegafonctionducours coucou = plus_proches_diviser coucou
+    }
+    question_6_f {
+      let coucou = points_random 1000 in lamegafonctionducours coucou = plus_proches_diviser coucou
+    }
+
+    question_7 {
+      complexite_methode_diviser > -1
+    }
+    question_8 {
+      complexite_methode_optimisee > -1
+    }
+}
+
+send {
+  let points_random n = Random.self_init () ;
+  let f _ = -100. +. Random.float 200., -100. +. Random.float 200. in
+  Array.init n f
+;;
+  let lamegafonctionducours (tab : point array) =
+  let couple_min = ref ((0., 0.), (0., 0.)) in
+  let dmin = ref 0. in
+  for i = 0 to Array.length tab - 2 do
+    for j = i + 1 to Array.length tab - 1 do
+      if !dmin > distance tab.(i) tab.(j) || !dmin = 0.
+      then (
+        couple_min := tab.(i), tab.(j);
+        dmin := distance tab.(i) tab.(j))
+    done
+  done;
+  (!couple_min : point * point)
+;;
+let jaimepaslereglisse flottant = Array.stable_sort compare flottant;;
+}
+
+expect_prompt
+
+foreach {name text} $tests {booltest $name $text}
+
+log "SUCCES:$nbok/$nbtotal"
+close $chan
