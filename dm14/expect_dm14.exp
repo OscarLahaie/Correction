@@ -96,22 +96,22 @@ set tests {
         distance (0.,0.) (1.,1.) = sqrt (2.)
     }
     question_2_a {
-      let coucou = points_random 10 in lamegafonctionducours coucou = plus_proche_naif coucou
+      let coucou = points_random 10 in lamegafonctionducours coucou = plus_proches_naif coucou
     }
     question_2_b {
-      let coucou = points_random 10 in lamegafonctionducours coucou = plus_proche_naif coucou
+      let coucou = points_random 10 in lamegafonctionducours coucou = plus_proches_naif coucou
     }
     question_2_c {
-      let coucou = points_random 100 in lamegafonctionducours coucou = plus_proche_naif coucou
+      let coucou = points_random 100 in lamegafonctionducours coucou = plus_proches_naif coucou
     }
     question_2_d {
-      let coucou = points_random 100 in lamegafonctionducours coucou = plus_proche_naif coucou
+      let coucou = points_random 100 in lamegafonctionducours coucou = plus_proches_naif coucou
     }
     question_2_e {
-      let coucou = points_random 1000 in lamegafonctionducours coucou = plus_proche_naif coucou
+      let coucou = points_random 1000 in lamegafonctionducours coucou = plus_proches_naif coucou
     }
     question_2_f {
-      let coucou = points_random 1000 in lamegafonctionducours coucou = plus_proche_naif coucou
+      let coucou = points_random 1000 in lamegafonctionducours coucou = plus_proches_naif coucou
     }
     question_3 {
       complexite_methode_naive > -1
