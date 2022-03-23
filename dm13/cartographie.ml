@@ -59,7 +59,7 @@ let () = Printf.printf "  a) %d, %d\n" (taille a10) (nb_feuilles a10)
 let () = Printf.printf "  b) %d, %d\n" (taille a100) (nb_feuilles a100)
 let () = Printf.printf "  c) %d, %d\n" (taille a1000) (nb_feuilles a1000)
 
-(* On créé et remplit un tableau m avec m_i = m.(i) *)
+(* On créer et remplit un tableau m avec m_i = m.(i) *)
 let make_m a =
   let n = taille a in
   let m = Array.make n (-1) in
