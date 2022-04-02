@@ -1,0 +1,182 @@
+#!/usr/bin/env expect
+set file $argv
+set fd [open $file r]
+#set dir [file dirname $file]
+#set results [file join $dir resultat.log]
+set results "$file.res"
+set chan [open $results w]
+
+set timeout 1
+
+set nbok 0
+set nbtotal 0
+
+spawn env OCAML_COLOR=never OCAML_ERROR_STYLE=short ocaml
+
+proc log {text} {
+  global chan
+  #puts stderr $text
+  puts $chan $text
+}
+
+proc interrupt_caml {} {
+  exec kill -SIGINT [exp_pid]
+  expect "Interrupted."
+}
+
+proc expect_prompt {} {
+  expect {
+    {#} {}
+    timeout {interrupt_caml; exp_continue}
+  }
+}
+
+proc start {} {
+  global fd
+  expect {#}
+
+  send [read $fd]
+
+  send {let _ = print_string "READY?";;}
+  send "\n"
+  send {let msg1 = "TESTS BEGIN";;}
+  send "\n"
+  send {let msg2 = " HERE";;}
+  send "\n"
+  send "let _ = print_string (msg1 ^ msg2);;\n"
+
+  expect {
+     "TESTS BEGIN HERE" {}
+     timeout {log "--- ERREUR GÉNÉRALE ---"; interrupt_caml}
+  }
+}
+
+log_user 0
+start
+log_user 1
+
+# booltest name "blabla" envoie "blabla" à caml
+# écrit sur stderr oui:name si caml répond "true",
+# non:name si caml répond false
+# ERROR:name si caml a une autre réaction
+
+proc booltest {name text} {
+  global nbok
+  global nbtotal
+  set h "let test_$name () =\n"
+  set data "$h$text\n;;\n" 
+  expect_prompt
+  send $data
+  incr nbtotal
+  expect {
+    "test_$name : unit -> bool = <fun>" {}
+    -re "Error: This expression has type" {log "ERREUR:$name (erreur de type)"; return -1}
+    -re "Error: Unbound value" {log "ERREUR:$name (fonction non définie)"; return -1}
+    timeout {log "ERREUR:$name (test ne compile pas)"; interrupt_caml; return -1}
+  }
+  expect_prompt
+  send "test_$name ();;\n"
+  expect {
+    "true" {log "vrai:$name"; incr nbok}
+    "false" {log "FAUX:$name"}
+    "Stack overflow during evaluation (looping recursion?)." {log "FAUX:$name (Boucle infinie ?)"}
+    "Exception:" {log "FAUX:$name (exception déclenchée)"}
+      timeout {log "FAUX:$name (trop long)"; interrupt_caml}
+  }
+}
+
+set tests {
+    question_1_a {
+        let jesuisuntableaudetest = [|5;3;6;8;4;58;5;3;1|] in
+        sub jesuisuntableaudetest 1 2 = Array.sub jesuisuntableaudetest 1 2
+    } question_1_b {
+      let jesuisuntableaudetest = [| 5; 3; 6; 8|] in
+      sub jesuisuntableaudetest 0 4 = Array.sub jesuisuntableaudetest 0 4;;
+    }
+    question_1_vide {
+      let jesuisuntableaudetest = [||] in
+        sub jesuisuntableaudetest 0 0 = Array.sub jesuisuntableaudetest 0 0
+    }
+    question_2_a {
+      degre [|0;1|] = 1;;
+    }
+    question_2_b {
+      degre [|0;2|] = 1;;
+    }
+    question_2_c {
+      degre [|0;1;0|] = 1;;
+    }
+    question_2_d {
+      degre [|0;1;0;1|] = 3;;
+    }
+    question_2_e {
+      degre [|0;65;0;145|] = 3;;
+    } 
+    question_2_vide {
+      degre [||] = 0;;
+    }
+    question_4_a {
+      reduire_repr [|0;1;0|] = [|0;1|];;
+    }
+    question_4_b {
+      reduire_repr [|0;1;0;0;0;0;0|] = [|0;1|];;
+    }
+    question_4_c {
+      reduire_repr [|0;65;0;145|] = [|0;65;0;145|];;
+    }
+    question_4_d {
+      reduire_repr [|0;0;0;0|] = [|0|];;
+    }
+    question_4_vide {
+      reduire_repr [||] = [||];;
+    }
+    question_5_a {
+      agrandir_repr [|0;1|] 2  = [|0;1|];;
+    }
+    question_5_b {
+      agrandir_repr [|0;1|] 3  = [|0;1;0|];;
+    }
+    question_5_c {
+      agrandir_repr [|0;4;5;1|] 7  = [|0;4;5;1;0;0;0|];;
+    }
+    question_5_vide {
+      agrandir_repr [||] 2  = [|0;0|];;
+    }
+    question_6_a {
+      somme [|1|] [|1|] = [|2|];;
+    }
+    question_6_b {
+      somme [|4;2|] [|1;4;5|] = [|5;6;5|];;
+    }
+    question_6_c {
+      somme [|6;8;7;3;0;0|] [|2;3;1;4;6;4;8;4|] = [|8;11;8;7;6;4;8;4|];;
+    }
+    question_6_vide {
+      somme [||] [||] = [||];;
+    }
+    question_7_a {
+      reduire_repr (multiplication_naive [| 1 |] [| 1 |]) = [| 1 |];;
+    }
+    question_7_b {
+      reduire_repr (multiplication_naive [| 4; 2; 1 |] [| 1; 4; 5 |]) = [| 4; 18; 29; 14; 5 |];;
+    }
+    question_7_c {
+      reduire_repr (multiplication_naive [| 6; 8; 7; 3; 0; 0 |] [| 2; 3; 1; 4; 6; 4; 8; 4 |])
+      = [| 12; 34; 44; 59; 84; 103; 134; 134; 100; 52; 12 |]
+      ;;
+    }
+    question_7_vide {
+      reduire_repr (multiplication_naive [||] [||]) = [||];;
+    }
+}
+
+send {
+
+}
+
+expect_prompt
+
+foreach {name text} $tests {booltest $name $text}
+
+log "SUCCES:$nbok/$nbtotal"
+close $chan
